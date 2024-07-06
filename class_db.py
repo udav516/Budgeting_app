@@ -36,6 +36,8 @@ class DB:
 
     # добавляем новую запись
     def insert(self, product, price, comment, date):
+        if not product or not price:
+            raise ValueError('Ошибка','Поля товар и цена не заполнены.')
         # формируем запрос с добавлением новой записи в БД
         self.cur.execute("INSERT INTO buy VALUES (NULL,?,?,?,?)", (product, price, comment, date))
         # сохраняем изменения
@@ -136,10 +138,12 @@ def search_command(*args):
         # и добавляем их в список в приложение
         list1.insert(END, row)
 
-    # обработчик нажатия на кнопку «Добавить»
 
-
+# обработчик нажатия на кнопку «Добавить»
 def add_command(*args):
+    if not product_text.get or product_text.get:
+        messagebox.showerror('Ошибка', 'Поля товар и цена должны быть заполнены.')
+        return
     # добавляем запись в БД
     db.insert(product_text.get(), price_text.get(), comment_text.get(), date_entry.get_date())
     # обновляем общий список в приложении
