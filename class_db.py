@@ -102,7 +102,7 @@ list1.configure(yscrollcommand=sb1.set)
 sb1.configure(command=list1.yview)
 
 # обработчик нажатия на кнопку «Посмотреть всё»
-def view_command():         
+def view_command(*args):         
     # очищаем список в приложении
     list1.delete(0, END)    
     # проходим все записи в БД
@@ -111,7 +111,7 @@ def view_command():
         list1.insert(END, row)
 
 # обработчик нажатия на кнопку «Поиск»
-def search_command():       
+def search_command(*args):       
     # очищаем список в приложении
     list1.delete(0, END)   
     # находим все записи по названию покупки
@@ -120,28 +120,28 @@ def search_command():
         list1.insert(END, row) 
 
 # обработчик нажатия на кнопку «Добавить»
-def add_command():         
+def add_command(*args):         
     # добавляем запись в БД
     db.insert(product_text.get(), price_text.get(), comment_text.get()) 
     # обновляем общий список в приложении
     view_command()
 
 # обработчик нажатия на кнопку «Обновить»
-def update_command():
+def update_command(*args):
     # обновляем данные в БД о выделенной записи
     db.update(selected_tuple[0], product_text.get(), price_text.get()) 
     # обновляем общий список расходов в приложении
     view_command()
 
 # обработчик нажатия на кнопку «Удалить»
-def delete_command(): 
+def delete_command(*args): 
     # удаляем запись из базы данных по индексу выделенного элемента
     db.delete(selected_tuple[0]) 
     # обновляем общий список расходов в приложении
     view_command()
 
 # обрабатываем закрытие окна
-def on_closing(): 
+def on_closing(*args): 
     # показываем диалоговое окно с кнопкой
     if messagebox.askokcancel("", "Закрыть программу?"): 
         # удаляем окно и освобождаем память
@@ -189,6 +189,12 @@ b5.grid(row=6, column=3)
 
 b6 = Button(window, text="Закрыть", width=12, command=on_closing)
 b6.grid(row=7, column=3)
+
+window.bind_all("<Control-v>", view_command)
+window.bind_all("<Control-n>", add_command)
+window.bind_all("<Control-u>", update_command)
+window.bind_all("<Control-d>", delete_command)
+window.bind_all("<Control-c>", on_closing)
 
 window.mainloop()
 
