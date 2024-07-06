@@ -14,18 +14,16 @@ class DB:
         self.cur = self.conn.cursor()
         # если нужной нам таблицы в базе нет — создаём её
         self.cur.execute(
-            "CREATE TABLE IF NOT EXISTS buy (id INTEGER PRIMARY KEY, product TEXT, price TEXT, comment TEXT, date DATE)")
+            "CREATE TABLE IF NOT EXISTS buy (id INTEGER PRIMARY KEY, product TEXT, price TEXT, comment TEXT, date DATE, category TEXT)")
         # сохраняем сделанные изменения в базе
         self.conn.commit()
 
         # деструктор класса
-
     def __del__(self):
         # отключаемся от базы при завершении работы
         self.conn.close()
 
         # просмотр всех записей
-
     def view(self):
         # выбираем все записи о покупках
         self.cur.execute("SELECT * FROM buy")
@@ -35,17 +33,15 @@ class DB:
         return rows
 
     # добавляем новую запись
-    def insert(self, product, price, comment, date):
+    def insert(self, product, price, comment, date, category):
         if not product or not price:
+            messagebox.showerror('Ошибка', 'Поля товар и цена должны быть заполнены.')
             raise ValueError('Ошибка','Поля товар и цена не заполнены.')
         # формируем запрос с добавлением новой записи в БД
-        self.cur.execute("INSERT INTO buy VALUES (NULL,?,?,?,?)", (product, price, comment, date))
+        self.cur.execute("INSERT INTO buy VALUES (NULL,?,?,?,?,?)", (product, price, comment, date, category))
         # сохраняем изменения
         self.conn.commit()
         
-        
-
-
 
     # обновляем информацию о покупке
     def update(self, id, product, price):
@@ -69,7 +65,6 @@ class DB:
         rows = self.cur.fetchall()
         return rows
 
-
 # создаём экземпляр базы данных на основе класса
 db = DB()
 
@@ -79,13 +74,16 @@ l1 = Label(window, text="Название")
 l1.grid(row=0, column=0)
 
 l2 = Label(window, text="Стоимость")
-l2.grid(row=0, column=2)
+l2.grid(row=2, column=2)
 
 l3 = Label(window, text="Комментарий")
 l3.grid(row=1, column=0)
 
 l4 = Label(window, text="Дата")
-l4.grid(row=1, column=2)
+l4.grid(row=0, column=2)
+
+l5 = Label(window, text="Категории")
+l5.grid(row=2, column=0)
 
 # создаём поле ввода названия покупки, говорим, что это будут строковые переменные и размещаем их тоже по сетке
 product_text = StringVar()
@@ -95,7 +93,7 @@ e1.grid(row=0, column=1)
 # то же самое для комментариев и цен
 price_text = StringVar()
 e2 = Entry(window, textvariable=price_text)
-e2.grid(row=0, column=3)
+e2.grid(row=2, column=3)
 
 comment_text = StringVar()
 e3 = Entry(window, textvariable=comment_text)
@@ -104,11 +102,16 @@ e3.grid(row=1, column=1)
 # создаем поле для ввода даты
 date_entry = DateEntry()
 e4 = DateEntry(window, textvariable=date_entry)
-e4.grid(row=1, column=3)
+e4.grid(row=0, column=3)
+
+# создаем поле для ввода категории
+category_text = StringVar()
+e5 = Entry(window, textvariable=category_text)
+e5.grid(row=2, column=1)
 
 # создаём список, где появятся наши покупки, и сразу определяем его размеры в окне
 list1 = Listbox(window, height=25, width=65)
-list1.grid(row=2, column=0, rowspan=6, columnspan=2)
+list1.grid(row=3, column=0, rowspan=6, columnspan=2)
 
 # на всякий случай добавим сбоку скролл, чтобы можно было быстро прокручивать длинные списки
 sb1 = Scrollbar(window)
@@ -117,7 +120,6 @@ sb1.grid(row=2, column=2, rowspan=6)
 # привязываем скролл к списку
 list1.configure(yscrollcommand=sb1.set)
 sb1.configure(command=list1.yview)
-
 
 # обработчик нажатия на кнопку «Посмотреть всё»
 def view_command(*args):
@@ -128,7 +130,6 @@ def view_command(*args):
         # и сразу добавляем их на экран
         list1.insert(END, row)
 
-
 # обработчик нажатия на кнопку «Поиск»
 def search_command(*args):
     # очищаем список в приложении
@@ -138,25 +139,21 @@ def search_command(*args):
         # и добавляем их в список в приложение
         list1.insert(END, row)
 
-
 # обработчик нажатия на кнопку «Добавить»
 def add_command(*args):
-    if not product_text.get or product_text.get:
-        messagebox.showerror('Ошибка', 'Поля товар и цена должны быть заполнены.')
+    if not product_text.get or not price_text.get:
         return
     # добавляем запись в БД
-    db.insert(product_text.get(), price_text.get(), comment_text.get(), date_entry.get_date())
+    db.insert(product_text.get(), price_text.get(), comment_text.get(), date_entry.get_date(), category_text.get())
     # обновляем общий список в приложении
     view_command()
-
 
 # обработчик нажатия на кнопку «Обновить»
 def update_command(*args):
     # обновляем данные в БД о выделенной записи
-    db.update(selected_tuple[0], product_text.get(), price_text.get(), date_entry.get_date())
+    db.update(selected_tuple[0], product_text.get(), price_text.get(), date_entry.get_date(), category_text.get())
     # обновляем общий список расходов в приложении
     view_command()
-
 
 # обработчик нажатия на кнопку «Удалить»
 def delete_command(*args):
@@ -165,7 +162,6 @@ def delete_command(*args):
     # обновляем общий список расходов в приложении
     view_command()
 
-
 # обрабатываем закрытие окна
 def on_closing(*args):
     # показываем диалоговое окно с кнопкой
@@ -173,10 +169,8 @@ def on_closing(*args):
         # удаляем окно и освобождаем память
         window.destroy()
 
-
 # сообщаем системе о том, что делать, когда окно закрывается
 window.protocol("WM_DELETE_WINDOW", on_closing)
-
 
 # заполняем поля ввода значениями выделенной позиции в общем списке
 def get_selected_row(event):
@@ -197,6 +191,8 @@ def get_selected_row(event):
     e3.insert(END, selected_tuple[3])
     e4.delete(0, END)
     e4.insert(END, selected_tuple[4])
+    e5.delete(0, END)
+    e5.insert(END, selected_tuple[5])
 
 # привязываем выбор любого элемента списка к запуску функции выбора
 list1.bind('<<ListboxSelect>>', get_selected_row)
@@ -204,23 +200,24 @@ list1.bind('<<ListboxSelect>>', get_selected_row)
 # создаём кнопки действий и привязываем их к своим функциям
 # кнопки размещаем тоже по сетке
 b1 = Button(window, text="Посмотреть все", width=12, command=view_command)
-b1.grid(row=2, column=3)  # size of the button
+b1.grid(row=3, column=3)  # size of the button
 
 b2 = Button(window, text="Поиск", width=12, command=search_command)
-b2.grid(row=3, column=3)
+b2.grid(row=4, column=3)
 
 b3 = Button(window, text="Добавить", width=12, command=add_command)
-b3.grid(row=4, column=3)
+b3.grid(row=5, column=3)
 
 b4 = Button(window, text="Обновить", width=12, command=update_command)
-b4.grid(row=5, column=3)
+b4.grid(row=6, column=3)
 
 b5 = Button(window, text="Удалить", width=12, command=delete_command)
-b5.grid(row=6, column=3)
+b5.grid(row=7, column=3)
 
 b6 = Button(window, text="Закрыть", width=12, command=on_closing)
-b6.grid(row=7, column=3)
+b6.grid(row=8, column=3)
 
+# создаём поддержку горячих клавиш
 window.bind_all("<Control-v>", view_command)
 window.bind_all("<Control-a>", add_command)
 window.bind_all("<Control-u>", update_command)
