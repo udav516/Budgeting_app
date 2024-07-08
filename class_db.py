@@ -15,7 +15,7 @@ class DB:
         self.cur = self.conn.cursor()
         # если нужной нам таблицы в базе нет — создаём её
         self.cur.execute(
-            "CREATE TABLE IF NOT EXISTS buy (id INTEGER PRIMARY KEY, product TEXT, price TEXT, comment TEXT, date DATE, category TEXT)")
+            "CREATE TABLE IF NOT EXISTS buy (id INTEGER PRIMARY KEY, product TEXT, price TEXT, comment TEXT, date DATE, category TEXT, limits INTEGER)")
         # сохраняем сделанные изменения в базе
         self.conn.commit()
 
@@ -34,12 +34,12 @@ class DB:
         return rows
 
     # добавляем новую запись
-    def insert(self, product, price, comment, date, category):
+    def insert(self, product, price, comment, date, category, limit):
         if not product or not price:
             messagebox.showerror('Ошибка', 'Поля товар и цена должны быть заполнены.')
             raise ValueError('Ошибка','Поля товар и цена не заполнены.')
         # формируем запрос с добавлением новой записи в БД
-        self.cur.execute("INSERT INTO buy VALUES (NULL,?,?,?,?,?)", (product, price, comment, date, category))
+        self.cur.execute("INSERT INTO buy VALUES (NULL,?,?,?,?,?,?)", (product, price, comment, date, category, limit))
         # сохраняем изменения
         self.conn.commit()
         
@@ -81,6 +81,19 @@ class DB:
             (start_date, end_date))
         rows = self.cur.fetchall()
         return rows
+    
+    # метод выборки лимита по категории из таблицы
+    def get_limit(self):
+        today = date.today().strftime('%Y-%m-%d')
+        db.cur.execute("SELECT SUM(price) FROM buy WHERE date=? GROUP BY date", (today,))
+        total_spent_today = db.cur.fetchone()
+        if total_spent_today:
+            total_spent_today = float(total_spent_today[0])
+            db.cur.execute("SELECT limits FROM buy")
+            daily_limit = db.cur.fetchone()
+            if daily_limit and total_spent_today > float(daily_limit[0]):
+                messagebox.showwarning("Превышение лимита", f"Дневной лимит в {daily_limit[0]} превышен! Сегодня потрачено {total_spent_today}.")
+                return
 # создаём экземпляр базы данных на основе класса
 db = DB()
 
@@ -100,6 +113,9 @@ l4.grid(row=0, column=2)
 
 l5 = Label(window, text="Категории")
 l5.grid(row=2, column=0)
+
+l6 = Label(window, text="Лимит")
+l6.grid(row=1, column=2)
 
 # создаём поле ввода названия покупки, говорим, что это будут строковые переменные и размещаем их тоже по сетке
 product_text = StringVar()
@@ -124,6 +140,11 @@ e4.grid(row=0, column=3)
 category_text = StringVar()
 e5 = Entry(window, textvariable=category_text)
 e5.grid(row=2, column=1)
+
+# создаем поле для ввода лимита
+limit_text = StringVar()
+e6 = Entry(window, textvariable=limit_text)
+e6.grid(row=1, column=3)
 
 # создаём список, где появятся наши покупки, и сразу определяем его размеры в окне
 list1 = Listbox(window, height=25, width=65)
@@ -160,14 +181,19 @@ def add_command(*args):
     if not product_text.get or not price_text.get:
         return
     # добавляем запись в БД
-    db.insert(product_text.get(), price_text.get(), comment_text.get(), date_entry.get_date(), category_text.get())
+    db.insert(product_text.get(), price_text.get(), comment_text.get(), date_entry.get_date(), category_text.get(), limit_text.get())
+    # уведомление о превышении лимита
+    limit = db.get_limit()
+    if limit and float(price_text.get()) > limit:
+        messagebox.askyesno("Превышен лимит", f"Расходы на '{category_text.get()}' превышают лимит, указанный в {limit:.2f}. Вы хотите продолжить?")
+        return
     # обновляем общий список в приложении
     view_command()
 
 # обработчик нажатия на кнопку «Обновить»
 def update_command(*args):
     # обновляем данные в БД о выделенной записи
-    db.update(selected_tuple[0], product_text.get(), price_text.get(), date_entry.get_date(), category_text.get())
+    db.update(selected_tuple[0], product_text.get(), price_text.get(), date_entry.get_date(), category_text.get(), limit_text.get())
     # обновляем общий список расходов в приложении
     view_command()
 
@@ -221,6 +247,8 @@ def get_selected_row(event):
     e4.insert(END, selected_tuple[4])
     e5.delete(0, END)
     e5.insert(END, selected_tuple[5])
+    e6.delete(0, END)
+    e6.insert(END, selected_tuple[6])
 
 # привязываем выбор любого элемента списка к запуску функции выбора
 list1.bind('<<ListboxSelect>>', get_selected_row)
