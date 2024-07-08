@@ -1,8 +1,9 @@
 # подключаем библиотеку для работы с базой данных
+from datetime import date
 import sqlite3
 from tkinter import END, Button, Entry, Label, Listbox, Scrollbar, StringVar, Tk, messagebox
 from tkcalendar import DateEntry
-
+from dateutil.relativedelta import relativedelta
 
 # создаём класс для работы с базой данных
 class DB:
@@ -64,7 +65,22 @@ class DB:
         # формируем полученные строки и возвращаем их как ответ
         rows = self.cur.fetchall()
         return rows
-
+    
+    # считаем траты в месяце
+    def get_monthly_expenses(self):
+        today = date.today()
+        start_date = date(today.year, today.month, 1)
+        end_date = start_date + relativedelta(months=1, days=-1)
+        # формируем запрос на сумму по категориям от начала до конца месяца
+        self.cur.execute(
+            "SELECT category, SUM(CAST(price AS FLOAT)) AS total_spent "
+            "FROM buy "
+            "WHERE date BETWEEN ? AND ? "
+            "GROUP BY category "
+            "ORDER BY total_spent DESC",
+            (start_date, end_date))
+        rows = self.cur.fetchall()
+        return rows
 # создаём экземпляр базы данных на основе класса
 db = DB()
 
@@ -162,6 +178,18 @@ def delete_command(*args):
     # обновляем общий список расходов в приложении
     view_command()
 
+# отображение расходов за месяц 
+def show_monthly_expenses(*args):
+    expenses = db.get_monthly_expenses()
+    total_spent = sum(expense[1] for expense in expenses)
+
+    message = "Расходы за месяц:\n\n"
+    for expense in expenses:
+        message += f"{expense[0]}: {expense[1]:.2f}\n"
+    message += f"\nОбщая сумма: {total_spent:.2f}"
+
+    messagebox.showinfo("Расходы за месяц", message)
+
 # обрабатываем закрытие окна
 def on_closing(*args):
     # показываем диалоговое окно с кнопкой
@@ -216,6 +244,9 @@ b5.grid(row=7, column=3)
 
 b6 = Button(window, text="Закрыть", width=12, command=on_closing)
 b6.grid(row=8, column=3)
+
+b7 = Button(window, text="Расходы", width=12, command=show_monthly_expenses)
+b7.grid(row=8, column=2)
 
 # создаём поддержку горячих клавиш
 window.bind_all("<Control-v>", view_command)
